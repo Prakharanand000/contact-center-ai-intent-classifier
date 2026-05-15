@@ -1,0 +1,11 @@
+models/bert_intent/
+retrieval/retrieval_index.pkl
+retrieval/retrieval_index_embeddings.npy
+__pycache__/
+**/__pycache__/
+*.pyc
+.env
+notebooks/test_predictions.csv
+data/train.csv
+data/validation.csv
+data/test.csv
