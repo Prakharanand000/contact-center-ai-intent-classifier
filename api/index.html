@@ -3,368 +3,526 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Contact Center AI — Intent Classifier</title>
+  <title>Contact Center AI: Intent Classifier</title>
   <style>
     :root {
-      --bg: #0f1117;
-      --surface: #1a1d27;
-      --surface2: #22263a;
-      --border: #2e3350;
-      --accent: #4f7ef8;
-      --accent2: #7c5cfc;
-      --green: #22d3a5;
-      --yellow: #f5a623;
-      --red: #f25c5c;
-      --text: #e8eaf6;
-      --muted: #7b82a8;
-      --font: 'Inter', system-ui, sans-serif;
+      --bg:       #ffffff;
+      --surface:  #f5f5f5;
+      --surface2: #eeeeee;
+      --border:   #e0e0e0;
+      --border2:  #cccccc;
+      --text:     #111111;
+      --text2:    #444444;
+      --text3:    #888888;
+      --green:    #16a34a;
+      --yellow:   #d97706;
+      --red:      #dc2626;
+      --blue:     #2563eb;
+      --header-bg: #0a0a0a;
+      --header-border: #222;
+      --nav-bg:   #111111;
+      --font: 'Inter', system-ui, -apple-system, sans-serif;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; display: flex; flex-direction: column; }
 
-    /* ── Header ── */
     header {
-      padding: 20px 32px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      gap: 14px;
+      padding: 16px 32px; border-bottom: 1px solid var(--header-border);
+      display: flex; align-items: center; gap: 14px;
+      background: var(--header-bg); position: sticky; top: 0; z-index: 100;
     }
-    .logo-icon {
-      width: 36px; height: 36px;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px;
-    }
-    header h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }
-    header p  { font-size: 12px; color: var(--muted); margin-top: 2px; }
-    .badge {
-      margin-left: auto;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 4px 12px;
-      font-size: 11px;
-      color: var(--green);
-      display: flex; align-items: center; gap: 6px;
-    }
-    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .logo { width: 40px; height: 40px; border-radius: 10px; background: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+    .header-title { font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: -0.6px; line-height: 1.2; }
+    .header-sub   { font-size: 12px; color: #bbbbbb; margin-top: 3px; font-weight: 400; }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    .status-pill  { display: flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; border: 1px solid #333; font-size: 11px; color: #aaaaaa; }
+    .status-dot   { width: 6px; height: 6px; border-radius: 50%; background: #444; }
+    .status-dot.online { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+    .model-tag    { padding: 4px 10px; border-radius: 4px; background: #1a1a1a; border: 1px solid #333; font-size: 10px; color: #aaaaaa; font-family: monospace; }
 
-    /* ── Layout ── */
-    main {
-      flex: 1;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0;
-      max-width: 1200px;
-      margin: 0 auto;
-      width: 100%;
-      padding: 32px;
-      gap: 24px;
-    }
+    .nav { display: flex; border-bottom: 1px solid var(--border); padding: 0 32px; background: var(--nav-bg); }
+    .nav-tab { padding: 12px 20px; font-size: 13px; font-weight: 500; color: #888; cursor: pointer; border: none; background: none; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color .15s, border-color .15s; }
+    .nav-tab:hover  { color: #ccc; }
+    .nav-tab.active { color: #ffffff; border-bottom-color: #ffffff; }
 
-    /* ── Panel ── */
-    .panel {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-    .panel-header {
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border);
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--muted);
-      letter-spacing: 0.6px;
-      text-transform: uppercase;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .panel-body { padding: 20px; flex: 1; display: flex; flex-direction: column; gap: 16px; }
+    .page { display: none; flex: 1; }
+    .page.active { display: flex; flex-direction: column; }
 
-    /* ── Input area ── */
-    .input-wrap { position: relative; }
-    textarea {
-      width: 100%;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      color: var(--text);
-      font-family: var(--font);
-      font-size: 14px;
-      line-height: 1.6;
-      padding: 14px 16px;
-      resize: vertical;
-      min-height: 100px;
-      outline: none;
-      transition: border-color .2s;
-    }
-    textarea:focus { border-color: var(--accent); }
-    textarea::placeholder { color: var(--muted); }
+    .classifier-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; flex: 1; border-top: 1px solid var(--border); }
+    .pane { padding: 28px; display: flex; flex-direction: column; gap: 18px; border-right: 1px solid var(--border); }
+    .pane:last-child { border-right: none; }
+    .pane-label { font-size: 11px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text3); display: flex; align-items: center; gap: 10px; }
+    .pane-label::after { content: ""; flex: 1; height: 1px; background: var(--border); }
 
-    /* ── Quick examples ── */
-    .examples-label { font-size: 11px; color: var(--muted); font-weight: 500; }
+    textarea { width: 100%; background: var(--bg); border: 1.5px solid var(--border2); border-radius: 8px; color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.7; padding: 14px 16px; resize: vertical; min-height: 110px; outline: none; transition: border-color .15s; }
+    textarea:focus { border-color: var(--text); }
+    textarea::placeholder { color: var(--text3); }
+
+    .chips-label { font-size: 11px; color: var(--text3); font-weight: 600; margin-bottom: 8px; }
     .chips { display: flex; flex-wrap: wrap; gap: 7px; }
-    .chip {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 5px 12px;
-      font-size: 12px;
-      cursor: pointer;
-      transition: all .15s;
-      color: var(--muted);
-    }
-    .chip:hover { border-color: var(--accent); color: var(--accent); }
+    .chip { padding: 5px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; border: 1.5px solid var(--border2); color: var(--text2); background: var(--bg); transition: all .12s; font-weight: 500; }
+    .chip:hover { border-color: var(--text); color: var(--text); background: var(--surface); }
 
-    /* ── Session toggle ── */
-    .session-row {
-      display: flex; align-items: center; gap: 10px;
-      font-size: 13px; color: var(--muted);
-    }
-    .toggle {
-      position: relative; width: 36px; height: 20px;
-      cursor: pointer;
-    }
+    .controls-row { display: flex; align-items: center; gap: 12px; }
+    .toggle-label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text2); cursor: pointer; font-weight: 500; }
+    .toggle { position: relative; width: 36px; height: 20px; }
     .toggle input { display: none; }
-    .slider {
-      position: absolute; inset: 0;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      transition: .2s;
-    }
-    .slider::before {
-      content: "";
-      position: absolute;
-      width: 14px; height: 14px;
-      left: 3px; top: 2px;
-      background: var(--muted);
-      border-radius: 50%;
-      transition: .2s;
-    }
-    .toggle input:checked + .slider { background: var(--accent); border-color: var(--accent); }
-    .toggle input:checked + .slider::before { transform: translateX(16px); background: #fff; }
-    #session-id-display { font-size: 11px; color: var(--accent); font-family: monospace; }
+    .slider { position: absolute; inset: 0; border-radius: 20px; background: var(--surface2); border: 1.5px solid var(--border2); transition: .2s; }
+    .slider::before { content: ""; position: absolute; width: 13px; height: 13px; left: 3px; top: 2px; background: var(--text3); border-radius: 50%; transition: .2s; }
+    .toggle input:checked + .slider { background: var(--text); border-color: var(--text); }
+    .toggle input:checked + .slider::before { transform: translateX(15px); background: #fff; }
+    .session-id { font-size: 10px; color: var(--text3); font-family: monospace; }
+    .btn-ghost { margin-left: auto; background: none; border: 1.5px solid var(--border2); color: var(--text3); border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; transition: all .12s; font-weight: 500; }
+    .btn-ghost:hover { border-color: var(--text); color: var(--text); }
 
-    /* ── Submit button ── */
-    button.submit {
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      color: #fff;
-      border: none;
-      border-radius: 10px;
-      padding: 12px 24px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity .15s;
-      width: 100%;
-    }
-    button.submit:hover { opacity: .88; }
-    button.submit:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-primary { background: var(--text); color: #ffffff; border: none; border-radius: 8px; padding: 14px 24px; font-size: 15px; font-weight: 700; cursor: pointer; width: 100%; letter-spacing: -0.2px; transition: opacity .15s; }
+    .btn-primary:hover { opacity: .85; }
+    .btn-primary:disabled { opacity: .35; cursor: not-allowed; }
 
-    /* ── Results ── */
-    .result-empty {
-      flex: 1; display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 10px; color: var(--muted); font-size: 13px;
-    }
-    .result-empty .icon { font-size: 36px; opacity: .3; }
+    .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--text3); font-size: 13px; }
+    .empty-icon { font-size: 30px; opacity: .25; }
 
-    .intent-card {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 16px;
-    }
-    .intent-label {
-      font-size: 11px; color: var(--muted); font-weight: 600;
-      text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px;
-    }
-    .intent-name {
-      font-size: 22px; font-weight: 700; letter-spacing: -0.5px;
-      color: var(--accent);
-    }
-    .intent-source {
-      margin-top: 4px; font-size: 11px; color: var(--muted);
-    }
-    .intent-source span { color: var(--yellow); }
+    .summary-card { border-radius: 10px; padding: 16px 18px; border: 1.5px solid; margin-bottom: 2px; }
+    .summary-card.high    { background: #f0fdf4; border-color: #86efac; }
+    .summary-card.medium  { background: #fffbeb; border-color: #fde68a; }
+    .summary-card.low     { background: #fef2f2; border-color: #fca5a5; }
+    .summary-card.escalate { background: #fef2f2; border-color: var(--red); }
+    .summary-icon  { font-size: 20px; margin-bottom: 6px; }
+    .summary-title { font-size: 13px; font-weight: 800; margin-bottom: 5px; color: var(--text); }
+    .summary-body  { font-size: 13px; color: var(--text2); line-height: 1.65; }
+    .summary-body strong { color: var(--text); font-weight: 700; }
+    .rec-row { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(0,0,0,.08); display: flex; align-items: flex-start; gap: 8px; }
+    .rec-label { font-size: 10px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text3); white-space: nowrap; padding-top: 1px; }
+    .rec-text  { font-size: 12px; color: var(--text2); line-height: 1.5; }
 
-    /* Confidence bar */
-    .conf-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
-    .conf-label { font-size: 12px; color: var(--muted); width: 80px; }
-    .conf-bar-wrap { flex: 1; background: var(--bg); border-radius: 4px; height: 8px; overflow: hidden; }
-    .conf-bar {
-      height: 100%; border-radius: 4px;
-      transition: width .5s ease;
-      background: linear-gradient(90deg, var(--accent), var(--green));
-    }
-    .conf-bar.low { background: linear-gradient(90deg, var(--yellow), var(--red)); }
-    .conf-pct { font-size: 13px; font-weight: 600; width: 44px; text-align: right; }
+    .result-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; padding: 18px; }
+    .result-label { font-size: 10px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
+    .intent-name { font-size: 26px; font-weight: 900; letter-spacing: -1px; color: var(--text); line-height: 1; text-transform: capitalize; }
+    .source-row { margin-top: 8px; display: flex; align-items: center; gap: 8px; }
+    .source-tag { font-size: 10px; padding: 3px 8px; border-radius: 4px; font-weight: 700; letter-spacing: 0.4px; border: 1.5px solid; }
+    .source-bert      { color: var(--text2); border-color: var(--border2); background: var(--bg); }
+    .source-retrieval { color: var(--yellow); border-color: var(--yellow); background: #fffbeb; }
+    .low-conf-tag { font-size: 11px; color: var(--yellow); font-weight: 600; }
 
-    /* Top 3 */
-    .top3-list { display: flex; flex-direction: column; gap: 6px; }
-    .top3-item {
-      display: flex; align-items: center; gap: 10px;
-      font-size: 12px;
-    }
-    .top3-intent { flex: 1; color: var(--text); }
-    .top3-bar-wrap { width: 100px; background: var(--bg); border-radius: 3px; height: 5px; overflow: hidden; }
-    .top3-bar { height: 100%; border-radius: 3px; background: var(--accent); opacity: .6; }
-    .top3-pct { font-size: 11px; color: var(--muted); width: 38px; text-align: right; }
+    .conf-row   { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+    .conf-label { font-size: 12px; color: var(--text3); font-weight: 600; width: 78px; }
+    .conf-track { flex: 1; background: var(--border); border-radius: 3px; height: 6px; overflow: hidden; }
+    .conf-fill  { height: 100%; border-radius: 3px; background: var(--text); transition: width .5s ease; }
+    .conf-fill.low { background: var(--yellow); }
+    .conf-pct   { font-size: 15px; font-weight: 800; width: 50px; text-align: right; color: var(--text); }
 
-    /* Dialog state */
-    .state-row {
-      display: flex; gap: 10px; flex-wrap: wrap;
-    }
-    .state-pill {
-      padding: 5px 12px; border-radius: 20px;
-      font-size: 12px; font-weight: 600;
-      border: 1px solid;
-    }
-    .state-greeting   { color: var(--accent);  border-color: var(--accent);  background: rgba(79,126,248,.1); }
-    .state-in_progress{ color: var(--yellow);  border-color: var(--yellow);  background: rgba(245,166,35,.1); }
-    .state-resolved   { color: var(--green);   border-color: var(--green);   background: rgba(34,211,165,.1); }
-    .state-escalate   { color: var(--red);     border-color: var(--red);     background: rgba(242,92,92,.1); }
+    .top3-row { display: flex; align-items: center; gap: 10px; font-size: 13px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+    .top3-row:last-child { border: none; }
+    .top3-rank  { color: var(--text3); font-size: 11px; width: 20px; font-weight: 700; }
+    .top3-name  { flex: 1; color: var(--text); font-weight: 600; text-transform: capitalize; }
+    .top3-track { width: 80px; background: var(--border); border-radius: 2px; height: 4px; }
+    .top3-bar   { height: 100%; border-radius: 2px; background: var(--text2); }
+    .top3-pct   { font-size: 12px; font-weight: 700; color: var(--text2); width: 42px; text-align: right; }
 
-    .meta-grid {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-    }
-    .meta-cell {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 14px;
-    }
-    .meta-cell .k { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
-    .meta-cell .v { font-size: 16px; font-weight: 700; margin-top: 3px; }
+    .state-badge { display: inline-flex; padding: 5px 14px; border-radius: 6px; font-size: 12px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; border: 1.5px solid; }
+    .state-greeting    { color: var(--text3);  border-color: var(--border2); background: var(--surface); }
+    .state-in_progress { color: var(--yellow); border-color: var(--yellow);  background: #fffbeb; }
+    .state-resolved    { color: var(--green);  border-color: var(--green);   background: #f0fdf4; }
+    .state-escalate    { color: var(--red);    border-color: var(--red);     background: #fef2f2; }
 
-    /* Retrieval examples */
-    .retrieval-list { display: flex; flex-direction: column; gap: 8px; }
-    .retrieval-item {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 12px;
-      font-size: 12px;
-    }
-    .retrieval-item .r-text { color: var(--text); margin-bottom: 4px; }
-    .retrieval-item .r-meta { color: var(--muted); display: flex; gap: 12px; }
-    .retrieval-item .r-label { color: var(--accent); }
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .meta-cell { background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+    .meta-k { font-size: 10px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--text3); }
+    .meta-v { font-size: 20px; font-weight: 900; margin-top: 4px; letter-spacing: -0.5px; color: var(--text); }
 
-    /* History */
-    .history-list { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; }
-    .history-item {
-      display: flex; gap: 10px; align-items: flex-start;
-      font-size: 12px;
-    }
-    .h-turn { color: var(--muted); min-width: 16px; }
-    .h-text { color: var(--text); flex: 1; }
-    .h-intent { color: var(--accent); font-weight: 600; }
-    .h-conf { color: var(--muted); }
+    .retrieval-item { background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; }
+    .retrieval-item:last-child { margin-bottom: 0; }
+    .r-text  { font-size: 13px; color: var(--text2); margin-bottom: 5px; font-style: italic; font-weight: 500; }
+    .r-meta  { display: flex; gap: 10px; font-size: 11px; color: var(--text3); font-weight: 600; }
+    .r-label { color: var(--text); font-weight: 700; }
 
-    /* Error */
-    .error-box {
-      background: rgba(242,92,92,.1);
-      border: 1px solid var(--red);
-      border-radius: 8px;
-      padding: 12px 16px;
-      font-size: 13px;
-      color: var(--red);
-    }
+    .history-item { display: flex; gap: 10px; align-items: baseline; font-size: 13px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+    .history-item:last-child { border: none; }
+    .h-n      { color: var(--text3); font-size: 11px; font-weight: 700; width: 16px; }
+    .h-text   { flex: 1; color: var(--text2); }
+    .h-intent { color: var(--text); font-weight: 700; text-transform: capitalize; }
+    .h-conf   { color: var(--text3); font-size: 11px; font-weight: 600; }
 
-    /* Spinner */
-    .spinner {
-      width: 20px; height: 20px;
-      border: 2px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin .7s linear infinite;
-      margin: auto;
-    }
+    .error-box { background: #fef2f2; border: 1.5px solid #fca5a5; border-radius: 8px; padding: 14px 16px; font-size: 13px; color: var(--red); font-weight: 600; }
+    .error-box code { font-family: monospace; font-size: 11px; color: var(--text3); font-weight: 400; }
+
+    .spinner { width: 20px; height: 20px; border: 2.5px solid var(--border); border-top-color: var(--text); border-radius: 50%; animation: spin .6s linear infinite; margin: auto; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Divider label */
-    .section-label {
-      font-size: 11px; color: var(--muted);
-      font-weight: 600; text-transform: uppercase;
-      letter-spacing: .6px;
-    }
+    .inner-page { padding: 40px; max-width: 900px; margin: 0 auto; width: 100%; }
+    .inner-page h2 { font-size: 28px; font-weight: 900; letter-spacing: -0.8px; margin-bottom: 6px; color: var(--text); }
+    .inner-page .sub { font-size: 14px; color: var(--text3); margin-bottom: 36px; line-height: 1.6; }
+    .section-title { font-size: 11px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text3); margin: 32px 0 16px; display: flex; align-items: center; gap: 12px; }
+    .section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+    .section-title:first-of-type { margin-top: 0; }
+    .card { background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 12px; }
+    .card h3 { font-size: 15px; font-weight: 800; margin-bottom: 6px; color: var(--text); }
+    .card p  { font-size: 13px; color: var(--text2); line-height: 1.7; }
 
-    @media (max-width: 800px) {
-      main { grid-template-columns: 1fr; padding: 16px; }
+    pre, code { font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace; }
+    .code-block { background: #0f0f0f; border: 1px solid #2a2a2a; border-radius: 8px; padding: 18px 20px; font-size: 12px; color: #d4d4d4; overflow-x: auto; line-height: 1.8; position: relative; margin: 10px 0; }
+    .copy-btn { position: absolute; top: 10px; right: 10px; background: #1e1e1e; border: 1px solid #333; color: #888; border-radius: 4px; padding: 3px 9px; font-size: 10px; cursor: pointer; transition: all .12s; font-weight: 600; }
+    .copy-btn:hover { color: #fff; border-color: #555; }
+    .code-key     { color: #93c5fd; }
+    .code-str     { color: #86efac; }
+    .code-num     { color: #fca5a5; }
+    .code-comment { color: #555; font-style: italic; }
+
+    .step-row { display: flex; gap: 18px; align-items: flex-start; margin-bottom: 24px; }
+    .step-num { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--border2); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: var(--text3); flex-shrink: 0; margin-top: 2px; }
+    .step-body h4 { font-size: 14px; font-weight: 800; margin-bottom: 5px; color: var(--text); }
+    .step-body p  { font-size: 13px; color: var(--text2); line-height: 1.6; }
+
+    .endpoint-row { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px; margin-bottom: 8px; }
+    .method { font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 4px; font-family: monospace; letter-spacing: 0.3px; }
+    .method.get  { background: #f0fdf4; color: var(--green); border: 1.5px solid var(--green); }
+    .method.post { background: #eff6ff; color: var(--blue);  border: 1.5px solid var(--blue); }
+    .endpoint-path { font-family: monospace; font-size: 13px; color: var(--text); flex: 1; font-weight: 600; }
+    .endpoint-desc { font-size: 12px; color: var(--text3); }
+
+    .tag-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+    .tag { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; background: var(--bg); border: 1.5px solid var(--border2); color: var(--text2); }
+
+    .demo-step { display: flex; gap: 20px; margin-bottom: 36px; align-items: flex-start; }
+    .demo-num { font-size: 10px; font-weight: 800; color: var(--text3); border: 1.5px solid var(--border2); border-radius: 6px; padding: 4px 8px; flex-shrink: 0; margin-top: 3px; letter-spacing: 0.8px; background: var(--surface); }
+    .demo-content h3 { font-size: 16px; font-weight: 800; margin-bottom: 6px; color: var(--text); }
+    .demo-content p  { font-size: 13px; color: var(--text2); line-height: 1.6; margin-bottom: 10px; }
+
+    .ui-mock { background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden; margin-top: 12px; box-shadow: 0 2px 12px rgba(0,0,0,.06); }
+    .ui-mock-header { background: var(--surface); padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 11px; color: var(--text3); font-weight: 700; letter-spacing: 0.5px; }
+    .ui-mock-body { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+    .mock-field { background: var(--surface); border: 1.5px solid var(--border2); border-radius: 8px; padding: 12px 14px; font-size: 13px; color: var(--text2); min-height: 56px; font-weight: 500; }
+    .mock-field.active { border-color: var(--text); color: var(--text); background: var(--bg); }
+    .mock-btn { background: var(--text); color: #fff; border-radius: 6px; padding: 10px 16px; font-size: 13px; font-weight: 700; text-align: center; }
+    .mock-result { background: var(--surface); border: 1.5px solid var(--border); border-radius: 8px; padding: 14px; }
+    .mock-intent { font-size: 20px; font-weight: 900; color: var(--text); margin-bottom: 6px; }
+    .mock-conf-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .mock-bar { flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .mock-fill { height: 100%; background: var(--text); border-radius: 3px; }
+    .mock-pct { font-size: 13px; font-weight: 800; color: var(--text); }
+
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; border: 1.5px solid; }
+    .badge-green  { color: var(--green);  border-color: var(--green);  background: #f0fdf4; }
+    .badge-yellow { color: var(--yellow); border-color: var(--yellow); background: #fffbeb; }
+    .badge-gray   { color: var(--text3);  border-color: var(--border2); background: var(--surface); }
+
+    .callout { background: var(--surface); border-left: 4px solid var(--text); padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 13px; color: var(--text2); line-height: 1.6; margin: 12px 0; }
+    .callout strong { color: var(--text); font-weight: 800; }
+
+    .api-mock { background: #0f0f0f; border: 1px solid #222; border-radius: 10px; overflow: hidden; margin: 14px 0; }
+    .api-mock-bar { background: #1a1a1a; padding: 10px 16px; border-bottom: 1px solid #2a2a2a; display: flex; align-items: center; gap: 8px; font-size: 11px; color: #666; }
+    .api-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .api-url { flex: 1; background: #111; border: 1px solid #333; border-radius: 4px; padding: 3px 12px; font-size: 11px; font-family: monospace; color: #888; text-align: center; }
+    .api-body { padding: 20px; }
+    .api-req { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 6px; padding: 14px; margin-bottom: 10px; }
+    .api-req-lbl { font-size: 10px; color: #555; margin-bottom: 8px; font-weight: 700; letter-spacing: 0.5px; }
+    .api-res { background: #0d1a0d; border: 1px solid #1a3a1a; border-radius: 6px; padding: 14px; }
+    .api-res-lbl { font-size: 10px; color: #4ade80; margin-bottom: 8px; font-weight: 700; letter-spacing: 0.5px; }
+
+    @media (max-width: 768px) {
+      .classifier-grid { grid-template-columns: 1fr; }
+      .nav { padding: 0 16px; overflow-x: auto; }
+      .inner-page { padding: 24px 16px; }
+      header { padding: 14px 16px; }
+      .header-title { font-size: 17px; }
     }
   </style>
 </head>
 <body>
 
 <header>
-  <div class="logo-icon">🎯</div>
+  <div class="logo">&#127919;</div>
   <div>
-    <h1>Contact Center AI — Intent Classifier</h1>
-    <p>BERT fine-tuned on CLINC150 · Hybrid BM25 + Dense Retrieval · Dialog State Tracking</p>
+    <div class="header-title">Contact Center AI: Intent Classifier</div>
+    <div class="header-sub">BERT · BM25 + Dense Retrieval · Dialog State Tracking</div>
   </div>
-  <div class="badge" id="status-badge">
-    <span class="dot"></span> Connecting...
+  <div class="header-right">
+    <div class="model-tag">bert-base-uncased · CLINC150</div>
+    <div class="status-pill" id="status-pill">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="status-text">Connecting...</span>
+    </div>
   </div>
 </header>
 
-<main>
+<nav class="nav">
+  <button class="nav-tab active" onclick="switchTab('classifier',this)">Classifier</button>
+  <button class="nav-tab" onclick="switchTab('mcp',this)">MCP Server</button>
+  <button class="nav-tab" onclick="switchTab('demo',this)">How to Use</button>
+  <button class="nav-tab" onclick="switchTab('api',this)">API Reference</button>
+</nav>
 
-  <!-- LEFT: Input panel -->
-  <div class="panel">
-    <div class="panel-header">📝 Customer Utterance</div>
-    <div class="panel-body">
-
-      <div class="input-wrap">
-        <textarea id="utterance" placeholder="Type a customer support message…&#10;e.g. I need to check the status of my recent order"></textarea>
-      </div>
-
+<!-- TAB 1: Classifier -->
+<div id="tab-classifier" class="page active">
+  <div class="classifier-grid">
+    <div class="pane">
+      <div class="pane-label">Customer Utterance</div>
+      <textarea id="utterance" placeholder="Type a customer support message...&#10;e.g. I need to check the status of my recent order"></textarea>
       <div>
-        <div class="examples-label" style="margin-bottom:8px">Quick examples</div>
+        <div class="chips-label">Quick examples</div>
         <div class="chips" id="chips"></div>
       </div>
-
-      <div class="session-row">
-        <label class="toggle">
-          <input type="checkbox" id="session-toggle" />
-          <span class="slider"></span>
+      <div class="controls-row">
+        <label class="toggle-label">
+          <label class="toggle">
+            <input type="checkbox" id="session-toggle" />
+            <span class="slider"></span>
+          </label>
+          Multi-turn session
         </label>
-        <span>Multi-turn session</span>
-        <span id="session-id-display"></span>
-        <button onclick="resetSession()" style="margin-left:auto;background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer">Reset</button>
+        <span class="session-id" id="session-id-display"></span>
+        <button class="btn-ghost" onclick="resetSession()">Reset</button>
       </div>
-
-      <button class="submit" id="submit-btn" onclick="classify()">
-        Classify Intent
-      </button>
-
+      <button class="btn-primary" id="submit-btn" onclick="classify()">Classify Intent</button>
     </div>
-  </div>
-
-  <!-- RIGHT: Results panel -->
-  <div class="panel">
-    <div class="panel-header">📊 Prediction Results</div>
-    <div class="panel-body" id="results-body">
-      <div class="result-empty">
-        <div class="icon">🤖</div>
+    <div class="pane" style="background:#fafafa">
+      <div class="pane-label">Prediction Results</div>
+      <div class="empty-state" id="empty-state">
+        <div class="empty-icon">&#9678;</div>
         <div>Run a prediction to see results</div>
       </div>
+      <div id="results-content" style="display:none;flex-direction:column;gap:16px;"></div>
     </div>
   </div>
+</div>
 
-</main>
+<!-- TAB 2: MCP Server -->
+<div id="tab-mcp" class="page">
+<div class="inner-page">
+  <h2>MCP Server Integration</h2>
+  <p class="sub">Expose this classifier as a Model Context Protocol (MCP) tool - connect it directly to Claude Desktop, Cursor, or any MCP-compatible agent.</p>
+  <div class="section-title">What is MCP</div>
+  <div class="card">
+    <h3>Model Context Protocol</h3>
+    <p>MCP lets AI assistants like Claude call external tools as part of their reasoning. By exposing this classifier as an MCP server, Claude can automatically classify customer intents mid-conversation, no copy-pasting required. Same architecture as WatchMyMoney's native MCP server.</p>
+    <div class="tag-row">
+      <span class="tag">Claude Desktop</span><span class="tag">Cursor</span><span class="tag">LangChain</span><span class="tag">Any MCP Client</span>
+    </div>
+  </div>
+  <div class="section-title">Setup Steps</div>
+  <div class="step-row">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <h4>Start the API locally</h4>
+      <p>The API must be live on port 8000 before Claude can call it.</p>
+      <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copy</button>python -m uvicorn api.main:app --reload --port 8000</div>
+    </div>
+  </div>
+  <div class="step-row">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <h4>Add to Claude Desktop config</h4>
+      <p>Open <code style="font-size:11px;background:#f5f5f5;padding:2px 5px;border-radius:3px">%APPDATA%\Claude\claude_desktop_config.json</code> and add:</p>
+      <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copy</button>{
+  <span class="code-key">"mcpServers"</span>: {
+    <span class="code-key">"contact-center-ai"</span>: {
+      <span class="code-key">"command"</span>: <span class="code-str">"python"</span>,
+      <span class="code-key">"args"</span>: [<span class="code-str">"-m"</span>, <span class="code-str">"mcp_server"</span>],
+      <span class="code-key">"cwd"</span>: <span class="code-str">"C:/Users/prakh/Downloads/Code &amp; Projects/contact-center-ai-intent-classifier"</span>
+    }
+  }
+}</div>
+    </div>
+  </div>
+  <div class="step-row">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <h4>Call from any Python agent</h4>
+      <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copy</button>import requests
+
+response = requests.post(
+    <span class="code-str">"http://localhost:8000/predict"</span>,
+    json={
+        <span class="code-key">"text"</span>: <span class="code-str">"I need to cancel my subscription"</span>,
+        <span class="code-key">"session_id"</span>: <span class="code-str">"session_abc123"</span>
+    }
+)
+result = response.json()
+print(result[<span class="code-str">"prediction"</span>][<span class="code-str">"intent"</span>])    <span class="code-comment"># cancel_subscription</span>
+print(result[<span class="code-str">"prediction"</span>][<span class="code-str">"confidence"</span>])  <span class="code-comment"># 0.9821</span></div>
+    </div>
+  </div>
+  <div class="step-row">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <h4>Tool schema for MCP clients</h4>
+      <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copy</button>{
+  <span class="code-key">"name"</span>: <span class="code-str">"classify_intent"</span>,
+  <span class="code-key">"description"</span>: <span class="code-str">"Classify a customer utterance into one of 151 intents"</span>,
+  <span class="code-key">"inputSchema"</span>: {
+    <span class="code-key">"properties"</span>: {
+      <span class="code-key">"text"</span>:       { <span class="code-key">"type"</span>: <span class="code-str">"string"</span> },
+      <span class="code-key">"session_id"</span>: { <span class="code-key">"type"</span>: <span class="code-str">"string"</span> }
+    },
+    <span class="code-key">"required"</span>: [<span class="code-str">"text"</span>]
+  }
+}</div>
+    </div>
+  </div>
+  <div class="section-title">Live API Response</div>
+  <div class="api-mock">
+    <div class="api-mock-bar">
+      <div class="api-dot" style="background:#f87171"></div>
+      <div class="api-dot" style="background:#facc15;margin-left:4px"></div>
+      <div class="api-dot" style="background:#4ade80;margin-left:4px"></div>
+      <div class="api-url">POST http://localhost:8000/predict</div>
+    </div>
+    <div class="api-body">
+      <div class="api-req">
+        <div class="api-req-lbl">REQUEST</div>
+        <pre style="font-size:12px;color:#d4d4d4;line-height:1.7">{
+  <span class="code-key">"text"</span>: <span class="code-str">"What's the status of my recent order?"</span>,
+  <span class="code-key">"session_id"</span>: <span class="code-str">"customer_001"</span>
+}</pre>
+      </div>
+      <div class="api-res">
+        <div class="api-res-lbl">RESPONSE  200 OK</div>
+        <pre style="font-size:12px;color:#d4d4d4;line-height:1.7">{
+  <span class="code-key">"prediction"</span>: {
+    <span class="code-key">"intent"</span>:         <span class="code-str">"order_status"</span>,
+    <span class="code-key">"confidence"</span>:     <span class="code-num">0.9814</span>,
+    <span class="code-key">"source"</span>:         <span class="code-str">"bert"</span>,
+    <span class="code-key">"low_confidence"</span>: <span class="code-num">false</span>
+  },
+  <span class="code-key">"dialog_state"</span>:    <span class="code-str">"in_progress"</span>,
+  <span class="code-key">"resolved"</span>:        <span class="code-num">false</span>,
+  <span class="code-key">"avg_handle_turns"</span>: <span class="code-num">1.0</span>
+}</pre>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- TAB 3: How to Use -->
+<div id="tab-demo" class="page">
+<div class="inner-page">
+  <h2>How to Use</h2>
+  <p class="sub">Step-by-step walkthrough of every feature in the classifier.</p>
+  <div class="demo-step">
+    <div class="demo-num">01</div>
+    <div class="demo-content">
+      <h3>Type or pick a customer utterance</h3>
+      <p>Enter any message in the text box, or click a quick example chip to auto-fill it. Press <strong>Enter</strong> or click <strong>Classify Intent</strong>.</p>
+      <div class="ui-mock">
+        <div class="ui-mock-header">CUSTOMER UTTERANCE</div>
+        <div class="ui-mock-body">
+          <div class="mock-field active">"I need to check the status of my recent order"</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <span class="chip">What's the status of my order?</span>
+            <span class="chip">I'd like to cancel my subscription</span>
+            <span class="chip">How do I reset my password?</span>
+          </div>
+          <div class="mock-btn">Classify Intent</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="demo-step">
+    <div class="demo-num">02</div>
+    <div class="demo-content">
+      <h3>Read the AI summary and recommendation</h3>
+      <p>The first thing you see is a plain-English <strong>summary card</strong> that tells you what the model detected, how confident it is, and what the recommended next action is.</p>
+      <div class="ui-mock">
+        <div class="ui-mock-header">AI SUMMARY</div>
+        <div class="ui-mock-body">
+          <div class="summary-card high">
+            <div class="summary-icon">&#9989;</div>
+            <div class="summary-title">High confidence detection: Order Status</div>
+            <div class="summary-body">The customer is asking about the <strong>status of their order</strong>. BERT classified this with <strong>98.1% confidence</strong>, making this a reliable prediction requiring no human review.</div>
+            <div class="rec-row">
+              <span class="rec-label">Next Step</span>
+              <span class="rec-text">Route to the order tracking workflow. Provide tracking number and estimated delivery date. No escalation needed.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="demo-step">
+    <div class="demo-num">03</div>
+    <div class="demo-content">
+      <h3>Enable multi-turn session tracking</h3>
+      <p>Toggle <strong>Multi-turn session</strong> on to track dialog state across turns. Detects when intent is <strong>resolved</strong> or needs <strong>escalation</strong>.</p>
+      <div class="ui-mock">
+        <div class="ui-mock-header">DIALOG STATE</div>
+        <div class="ui-mock-body">
+          <div class="meta-grid">
+            <div class="meta-cell"><div class="meta-k">Dialog State</div><div style="margin-top:6px"><span class="badge badge-yellow">IN PROGRESS</span></div></div>
+            <div class="meta-cell"><div class="meta-k">Avg Handle Turns</div><div class="meta-v" style="color:var(--green)">1.0</div></div>
+            <div class="meta-cell"><div class="meta-k">Resolved</div><div class="meta-v" style="color:var(--text3)">No</div></div>
+            <div class="meta-cell"><div class="meta-k">Escalate</div><div class="meta-v" style="color:var(--text3)">No</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="demo-step">
+    <div class="demo-num">04</div>
+    <div class="demo-content">
+      <h3>Inspect the retrieval fallback</h3>
+      <p>When uncertain, the hybrid retrieval layer shows matched <strong>training examples</strong> with BM25, dense, and hybrid scores.</p>
+      <div class="ui-mock">
+        <div class="ui-mock-header">RETRIEVAL FALLBACK EXAMPLES</div>
+        <div class="ui-mock-body">
+          <div class="retrieval-item"><div class="r-text">"how do i change my billing address"</div><div class="r-meta"><span class="r-label">update_billing</span><span>hybrid: 95%</span><span>dense: 91%</span></div></div>
+          <div class="retrieval-item"><div class="r-text">"i need to update the address on my account"</div><div class="r-meta"><span class="r-label">update_billing</span><span>hybrid: 88%</span><span>dense: 84%</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="demo-step">
+    <div class="demo-num">05</div>
+    <div class="demo-content">
+      <h3>Use Swagger UI for raw API testing</h3>
+      <p>FastAPI auto-generates interactive docs. Use it to test all endpoints and browse all 151 intent labels.</p>
+      <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copy</button>http://localhost:8000/docs</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- TAB 4: API Reference -->
+<div id="tab-api" class="page">
+<div class="inner-page">
+  <h2>API Reference</h2>
+  <p class="sub">All endpoints. Base URL: <code style="font-size:12px;background:#f5f5f5;padding:2px 6px;border-radius:4px;font-weight:700">http://localhost:8000</code></p>
+  <div class="section-title">Endpoints</div>
+  <div class="endpoint-row"><span class="method get">GET</span><span class="endpoint-path">/</span><span class="endpoint-desc">Frontend UI</span></div>
+  <div class="endpoint-row"><span class="method get">GET</span><span class="endpoint-path">/health</span><span class="endpoint-desc">Health check</span></div>
+  <div class="endpoint-row"><span class="method get">GET</span><span class="endpoint-path">/intents</span><span class="endpoint-desc">List all 151 intent labels</span></div>
+  <div class="endpoint-row"><span class="method post">POST</span><span class="endpoint-path">/predict</span><span class="endpoint-desc">Classify utterance + dialog tracking</span></div>
+  <div class="endpoint-row"><span class="method get">GET</span><span class="endpoint-path">/docs</span><span class="endpoint-desc">Interactive Swagger UI</span></div>
+  <div class="section-title">POST /predict: Request</div>
+  <div class="code-block"><button class="copy-btn" onclick="copyCode(this)">copy</button>{
+  <span class="code-key">"text"</span>:       <span class="code-str">"string"</span>,  <span class="code-comment">// required</span>
+  <span class="code-key">"session_id"</span>: <span class="code-str">"string"</span>   <span class="code-comment">// optional</span>
+}</div>
+  <div class="section-title">POST /predict: Response</div>
+  <div class="code-block">{
+  <span class="code-key">"prediction"</span>: {
+    <span class="code-key">"intent"</span>:          <span class="code-str">"string"</span>,
+    <span class="code-key">"confidence"</span>:      <span class="code-num">float</span>,
+    <span class="code-key">"source"</span>:          <span class="code-str">"bert|retrieval"</span>,
+    <span class="code-key">"low_confidence"</span>: <span class="code-num">bool</span>,
+    <span class="code-key">"top3"</span>:           [[<span class="code-str">"intent"</span>, <span class="code-num">score</span>], ...]
+  },
+  <span class="code-key">"session_id"</span>:      <span class="code-str">"string"</span>,
+  <span class="code-key">"dialog_state"</span>:    <span class="code-str">"greeting|in_progress|resolved|escalate"</span>,
+  <span class="code-key">"turn_count"</span>:      <span class="code-num">int</span>,
+  <span class="code-key">"resolved"</span>:        <span class="code-num">bool</span>,
+  <span class="code-key">"escalate"</span>:        <span class="code-num">bool</span>,
+  <span class="code-key">"avg_handle_turns"</span>: <span class="code-num">float</span>
+}</div>
+  <div class="section-title">Model Performance</div>
+  <div class="meta-grid">
+    <div class="meta-cell"><div class="meta-k">Test Accuracy</div><div class="meta-v" style="color:var(--green)">95.1%</div></div>
+    <div class="meta-cell"><div class="meta-k">Weighted F1</div><div class="meta-v" style="color:var(--green)">95.1%</div></div>
+    <div class="meta-cell"><div class="meta-k">Intent Classes</div><div class="meta-v">151</div></div>
+    <div class="meta-cell"><div class="meta-k">Handle Time Down</div><div class="meta-v" style="color:var(--green)">~28%</div></div>
+  </div>
+</div>
+</div>
 
 <script>
 const API = "http://localhost:8000";
@@ -384,100 +542,161 @@ const EXAMPLES = [
   "I want to check my balance",
 ];
 
-// Render chips
-const chipsEl = document.getElementById("chips");
+const chipsContainer = document.getElementById("chips");
 EXAMPLES.forEach(ex => {
-  const c = document.createElement("div");
-  c.className = "chip";
-  c.textContent = ex;
-  c.onclick = () => { document.getElementById("utterance").value = ex; };
-  chipsEl.appendChild(c);
+  const chip = document.createElement("div");
+  chip.className = "chip";
+  chip.textContent = ex;
+  chip.addEventListener("click", () => { document.getElementById("utterance").value = ex; });
+  chipsContainer.appendChild(chip);
 });
 
-// Health check
 async function checkHealth() {
   try {
     const r = await fetch(`${API}/health`);
-    const badge = document.getElementById("status-badge");
-    if (r.ok) {
-      badge.innerHTML = '<span class="dot"></span> API Online';
-      badge.style.color = "var(--green)";
-    } else {
-      badge.innerHTML = '⚠ API Error';
-      badge.style.color = "var(--red)";
-    }
-  } catch {
-    const badge = document.getElementById("status-badge");
-    badge.innerHTML = '🔴 API Offline — run uvicorn locally';
-    badge.style.color = "var(--red)";
-  }
+    const dot = document.getElementById("status-dot");
+    const txt = document.getElementById("status-text");
+    if (r.ok) { dot.classList.add("online"); txt.textContent = "API Online"; }
+    else txt.textContent = "API Error";
+  } catch { document.getElementById("status-text").textContent = "API Offline"; }
 }
 checkHealth();
 
+function switchTab(name, btn) {
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".nav-tab").forEach(b => b.classList.remove("active"));
+  document.getElementById("tab-"+name).classList.add("active");
+  btn.classList.add("active");
+}
+
 function resetSession() {
-  sessionId = null;
-  turnHistory = [];
+  sessionId = null; turnHistory = [];
   document.getElementById("session-id-display").textContent = "";
-  document.getElementById("results-body").innerHTML = `
-    <div class="result-empty">
-      <div class="icon">🔄</div>
-      <div>Session reset</div>
-    </div>`;
+  document.getElementById("empty-state").style.display = "flex";
+  const c = document.getElementById("results-content");
+  c.style.display = "none"; c.innerHTML = "";
 }
 
 async function classify() {
   const text = document.getElementById("utterance").value.trim();
   if (!text) return;
-
   const useSession = document.getElementById("session-toggle").checked;
   const btn = document.getElementById("submit-btn");
   btn.disabled = true;
-
-  document.getElementById("results-body").innerHTML = `<div style="display:flex;align-items:center;justify-content:center;flex:1"><div class="spinner"></div></div>`;
-
+  const emptyEl = document.getElementById("empty-state");
+  const contentEl = document.getElementById("results-content");
+  emptyEl.style.display = "none";
+  contentEl.style.display = "flex";
+  contentEl.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;padding:48px"><div class="spinner"></div></div>`;
   try {
     const body = { text };
     if (useSession && sessionId) body.session_id = sessionId;
-
     const res = await fetch(`${API}/predict`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(body)
     });
-
     if (!res.ok) throw new Error(`API error ${res.status}`);
     const data = await res.json();
-
     if (useSession) {
       sessionId = data.session_id;
-      document.getElementById("session-id-display").textContent = sessionId.slice(0, 8) + "…";
-      turnHistory.push({ text, intent: data.prediction.intent, confidence: data.prediction.confidence });
+      document.getElementById("session-id-display").textContent = sessionId.slice(0,8)+"...";
+      turnHistory.push({text, intent: data.prediction.intent, confidence: data.prediction.confidence});
     }
-
-    renderResults(data);
-  } catch (e) {
-    document.getElementById("results-body").innerHTML = `<div class="error-box">❌ ${e.message}<br><small>Make sure the API is running: <code>uvicorn api.main:app --reload --port 8000</code></small></div>`;
-  } finally {
-    btn.disabled = false;
-  }
+    renderResults(data, contentEl);
+  } catch(e) {
+    contentEl.innerHTML = `<div class="error-box">X ${e.message}<br><code>python -m uvicorn api.main:app --reload --port 8000</code></div>`;
+  } finally { btn.disabled = false; }
 }
 
-function renderResults(data) {
+const INTENT_META = {
+  order_status:        { label: "Order Status",        topic: "checking on an order",               action: "Route to the order tracking workflow. Provide tracking number and estimated delivery date." },
+  cancel_order:        { label: "Cancel Order",         topic: "cancelling an order",                action: "Pull up the order details and confirm cancellation eligibility. Process within SLA." },
+  refund:              { label: "Refund Request",       topic: "requesting a refund",                action: "Verify purchase history and refund policy. Initiate refund if within policy window." },
+  track_package:       { label: "Track Package",        topic: "tracking a package",                 action: "Provide the latest tracking link or carrier status update." },
+  account_login:       { label: "Account Login Issue",  topic: "trouble logging into their account", action: "Offer password reset link or walk through account recovery steps." },
+  change_password:     { label: "Password Change",      topic: "changing their password",            action: "Direct to account settings or initiate a secure password reset email." },
+  bill_inquiry:        { label: "Billing Inquiry",      topic: "a billing question",                 action: "Pull up the billing record and clarify charges. Escalate disputes to billing team." },
+  payment_issue:       { label: "Payment Issue",        topic: "a payment problem",                  action: "Check payment method status and recent transaction logs. Re-attempt or update payment details." },
+  product_inquiry:     { label: "Product Inquiry",      topic: "a question about a product",         action: "Provide product details, availability, and pricing. Offer to connect with a specialist if needed." },
+  store_hours:         { label: "Store Hours",          topic: "store hours or location",            action: "Provide accurate store hours for the relevant location. Share store locator link." },
+  cancel_subscription: { label: "Cancel Subscription",  topic: "cancelling a subscription",          action: "Confirm subscription details and present retention offer before processing cancellation." },
+  update_billing:      { label: "Update Billing",       topic: "updating billing information",       action: "Guide to account billing settings to update payment method or address securely." },
+  insurance:           { label: "Insurance Query",      topic: "an insurance-related question",      action: "Transfer to the insurance department or provide policy documentation." },
+  transactions:        { label: "Transaction History",  topic: "reviewing transactions",             action: "Pull up the account transaction log and filter by requested date range." },
+  oos:                 { label: "Out-of-Scope",         topic: "something outside known categories", action: "This message did not match any known intent. Escalate to a human agent immediately." },
+};
+
+function getIntentMeta(intent) {
+  if (INTENT_META[intent]) return INTENT_META[intent];
+  for (const key of Object.keys(INTENT_META)) {
+    if (intent.includes(key) || key.includes(intent.split("_")[0])) return INTENT_META[key];
+  }
+  const label = intent.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+  return { label, topic: `a ${label.toLowerCase()} request`, action: `Route to the relevant team handling ${label.toLowerCase()} requests.` };
+}
+
+function buildSummary(data) {
+  const p = data.prediction;
+  const conf = p.confidence * 100;
+  const meta = getIntentMeta(p.intent);
+  const isRetrieval = p.source === "retrieval_fallback";
+
+  let tier, icon, title, body, rec;
+
+  if (data.escalate) {
+    tier = "escalate"; icon = "&#9888;&#65039;";
+    title = "Escalation recommended: Intent unclear";
+    body = `After ${data.turn_count} turn${data.turn_count>1?"s":""}, the model has not settled on a consistent intent. The conversation may involve a complex or ambiguous request that requires human judgment.`;
+    rec = "Transfer this conversation to a human agent immediately. Provide the agent with the full turn history shown below.";
+  } else if (data.resolved) {
+    tier = "high"; icon = "&#9989;";
+    title = `Intent resolved: ${meta.label}`;
+    body = `The customer's intent was confirmed as <strong>${meta.label}</strong> across multiple turns with <strong>${conf.toFixed(1)}% confidence</strong>. The conversation can be closed or handed to an automated response.`;
+    rec = `Mark conversation as resolved. Send appropriate self-service link or confirmation for ${meta.topic}.`;
+  } else if (conf >= 80 && !p.low_confidence) {
+    tier = "high"; icon = "&#9989;";
+    title = `High confidence detection: ${meta.label}`;
+    body = `The customer is asking about <strong>${meta.topic}</strong>. ${isRetrieval ? "Hybrid retrieval" : "BERT"} classified this with <strong>${conf.toFixed(1)}% confidence</strong>, making this a reliable prediction that can be routed automatically.`;
+    rec = meta.action;
+  } else if (conf >= 60) {
+    tier = "medium"; icon = "&#128993;";
+    title = `Moderate confidence: ${meta.label}`;
+    body = `The most likely intent is <strong>${meta.topic}</strong>, but confidence is <strong>${conf.toFixed(1)}%</strong>. ${isRetrieval ? "The retrieval fallback was triggered because BERT was uncertain." : "The model has moderate certainty."} Consider asking a clarifying question.`;
+    rec = `Ask the customer to confirm: "Are you looking for help with ${meta.topic}?" before routing. Alternatively, present the top 2 options.`;
+  } else {
+    tier = "low"; icon = "&#128308;";
+    title = "Low confidence - needs clarification";
+    body = `The model returned <strong>${conf.toFixed(1)}% confidence</strong> - too low to act on reliably. The best guess is <strong>${meta.label}</strong>, but this message is ambiguous. Retrieval fallback was used.`;
+    rec = "Do not route automatically. Ask the customer to rephrase or describe their issue in more detail. Consider escalating to a human agent.";
+  }
+
+  return `
+    <div class="summary-card ${tier}">
+      <div class="summary-icon">${icon}</div>
+      <div class="summary-title">${title}</div>
+      <div class="summary-body">${body}</div>
+      <div class="rec-row">
+        <span class="rec-label">Next Step</span>
+        <span class="rec-text">${rec}</span>
+      </div>
+    </div>`;
+}
+
+function renderResults(data, el) {
   const p = data.prediction;
   const confPct = (p.confidence * 100).toFixed(1);
   const isLow = p.low_confidence;
 
-  const top3HTML = p.top3.map(([intent, score], i) => `
-    <div class="top3-item">
-      <span style="color:var(--muted);font-size:11px">#${i+1}</span>
-      <span class="top3-intent">${intent.replace(/_/g, " ")}</span>
-      <div class="top3-bar-wrap"><div class="top3-bar" style="width:${(score*100).toFixed(0)}%"></div></div>
+  const top3 = p.top3.map(([intent,score],i) => `
+    <div class="top3-row">
+      <span class="top3-rank">#${i+1}</span>
+      <span class="top3-name">${intent.replace(/_/g," ")}</span>
+      <div class="top3-track"><div class="top3-bar" style="width:${(score*100).toFixed(0)}%"></div></div>
       <span class="top3-pct">${(score*100).toFixed(1)}%</span>
     </div>`).join("");
 
-  const retrievalHTML = (p.retrieved_examples && p.retrieved_examples.length)
-    ? `<div class="section-label">Retrieval Fallback Examples</div>
-       <div class="retrieval-list">${p.retrieved_examples.slice(0,3).map(r => `
+  const retrieved = (p.retrieved_examples && p.retrieved_examples.length)
+    ? `<div class="pane-label">Retrieval Fallback Examples</div>
+       ${p.retrieved_examples.slice(0,3).map(r=>`
          <div class="retrieval-item">
            <div class="r-text">"${r.text}"</div>
            <div class="r-meta">
@@ -485,64 +704,63 @@ function renderResults(data) {
              <span>hybrid: ${(r.hybrid_score*100).toFixed(0)}%</span>
              <span>dense: ${(r.dense_score*100).toFixed(0)}%</span>
            </div>
-         </div>`).join("")}
-       </div>` : "";
+         </div>`).join("")}` : "";
 
-  const stateClass = `state-${data.dialog_state}`;
-  const stateLabel = data.dialog_state.replace(/_/g, " ");
-
-  const historyHTML = turnHistory.length > 1
-    ? `<div class="section-label">Turn History</div>
-       <div class="history-list">${turnHistory.map((t,i) => `
+  const history = turnHistory.length > 1
+    ? `<div class="pane-label">Turn History</div>
+       <div class="result-card">${turnHistory.map((t,i)=>`
          <div class="history-item">
-           <span class="h-turn">${i+1}</span>
+           <span class="h-n">${i+1}</span>
            <span class="h-text">${t.text}</span>
            <span class="h-intent">${t.intent.replace(/_/g," ")}</span>
            <span class="h-conf">${(t.confidence*100).toFixed(0)}%</span>
          </div>`).join("")}
        </div>` : "";
 
-  document.getElementById("results-body").innerHTML = `
-    <div class="intent-card">
-      <div class="intent-label">Predicted Intent</div>
-      <div class="intent-name">${p.intent.replace(/_/g, " ")}</div>
-      <div class="intent-source">
-        Source: <span>${p.source === "bert" ? "BERT classifier" : "⚡ Retrieval fallback"}</span>
-        ${isLow ? ' · <span style="color:var(--red)">Low confidence</span>' : ''}
+  el.innerHTML = `
+    ${buildSummary(data)}
+    <div class="pane-label">Prediction Detail</div>
+    <div class="result-card">
+      <div class="result-label">Predicted Intent</div>
+      <div class="intent-name">${p.intent.replace(/_/g," ")}</div>
+      <div class="source-row">
+        <span class="source-tag ${p.source==="bert"?"source-bert":"source-retrieval"}">
+          ${p.source==="bert"?"BERT":"RETRIEVAL FALLBACK"}
+        </span>
+        ${isLow?'<span class="low-conf-tag">Low confidence</span>':""}
       </div>
       <div class="conf-row">
         <span class="conf-label">Confidence</span>
-        <div class="conf-bar-wrap">
-          <div class="conf-bar ${isLow ? 'low' : ''}" style="width:${confPct}%"></div>
-        </div>
-        <span class="conf-pct" style="color:${isLow ? 'var(--yellow)' : 'var(--green)'}">${confPct}%</span>
+        <div class="conf-track"><div class="conf-fill ${isLow?"low":""}" style="width:${confPct}%"></div></div>
+        <span class="conf-pct" style="color:${isLow?"var(--yellow)":"var(--text)"}">${confPct}%</span>
       </div>
     </div>
-
-    <div class="section-label">Top 3 Predictions</div>
-    <div class="top3-list">${top3HTML}</div>
-
-    <div class="section-label">Dialog State</div>
-    <div class="state-row">
-      <div class="state-pill ${stateClass}">${stateLabel}</div>
-    </div>
+    <div class="pane-label">Top 3 Predictions</div>
+    <div class="result-card" style="padding:12px 16px">${top3}</div>
+    <div class="pane-label">Dialog State</div>
+    <div class="state-badge state-${data.dialog_state}">${data.dialog_state.replace(/_/g," ")}</div>
     <div class="meta-grid">
-      <div class="meta-cell"><div class="k">Turn</div><div class="v">#${data.turn_count}</div></div>
-      <div class="meta-cell"><div class="k">Avg Handle Turns</div><div class="v" style="color:var(--green)">${data.avg_handle_turns.toFixed(1)}</div></div>
-      <div class="meta-cell"><div class="k">Resolved</div><div class="v" style="color:${data.resolved?'var(--green)':'var(--muted)'}">${data.resolved ? "Yes ✓" : "No"}</div></div>
-      <div class="meta-cell"><div class="k">Escalate</div><div class="v" style="color:${data.escalate?'var(--red)':'var(--muted)'}">${data.escalate ? "Yes ⚠" : "No"}</div></div>
+      <div class="meta-cell"><div class="meta-k">Turn</div><div class="meta-v">#${data.turn_count}</div></div>
+      <div class="meta-cell"><div class="meta-k">Avg Handle Turns</div><div class="meta-v" style="color:var(--green)">${data.avg_handle_turns.toFixed(1)}</div></div>
+      <div class="meta-cell"><div class="meta-k">Resolved</div><div class="meta-v" style="color:${data.resolved?"var(--green)":"var(--text3)"}">${data.resolved?"Yes":"No"}</div></div>
+      <div class="meta-cell"><div class="meta-k">Escalate</div><div class="meta-v" style="color:${data.escalate?"var(--red)":"var(--text3)"}">${data.escalate?"Yes":"No"}</div></div>
     </div>
-
-    ${retrievalHTML}
-    ${historyHTML}
+    ${retrieved}
+    ${history}
   `;
 }
 
-// Enter key to submit
+function copyCode(btn) {
+  const text = btn.parentElement.innerText.replace(/^copy\n/,"").trim();
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = "copied!";
+    setTimeout(() => btn.textContent = "copy", 1500);
+  });
+}
+
 document.getElementById("utterance").addEventListener("keydown", e => {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); classify(); }
 });
 </script>
-
 </body>
 </html>
