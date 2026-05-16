@@ -2,14 +2,13 @@
 FastAPI serving layer.
 
 Endpoints:
-  GET  /                 — frontend UI
-  POST /predict          — single utterance, returns intent + dialog state
-  GET  /health           — health check
-  GET  /intents          — list all known intents
+  GET  /                 - frontend UI
+  POST /predict          - single utterance, returns intent + dialog state
+  GET  /health           - health check
+  GET  /intents          - list all known intents
 
 Run locally:
     uvicorn api.main:app --reload --port 8000
-    Then open: http://localhost:8000
 
 Deploy to Render:
     Start command: uvicorn api.main:app --host 0.0.0.0 --port $PORT
@@ -23,21 +22,21 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional
 
 from models.predict import get_classifier
-from retrieval.hybrid_retriever import get_retriever
 from dialog.state_tracker import DialogStateTracker
+
+# Only import retriever if index or training data exists
+_RETRIEVAL_AVAILABLE = os.path.exists(
+    os.path.join(os.path.dirname(__file__), "..", "retrieval", "retrieval_index.pkl")
+) or os.path.exists(
+    os.path.join(os.path.dirname(__file__), "..", "data", "train.csv")
+)
 
 app = FastAPI(
     title="Contact Center AI Intent Classifier",
-    description=(
-        "Production-grade NLP intent classification pipeline using BERT fine-tuning "
-        "and hybrid Information Retrieval (BM25 + dense vector search). "
-        "Built for Contact Center AI use cases."
-    ),
     version="1.0.0",
 )
 
@@ -48,15 +47,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve static frontend
 _api_dir = os.path.dirname(__file__)
-
-# In-memory session store (use Redis in production)
 _sessions: dict = {}
 _tracker = DialogStateTracker()
 
-
-# ── Request/Response schemas ──────────────────────────────────────────────────
 
 class PredictRequest(BaseModel):
     text: str
@@ -65,7 +59,7 @@ class PredictRequest(BaseModel):
 class TurnResult(BaseModel):
     intent: str
     confidence: float
-    source: str          # "bert" | "retrieval_fallback"
+    source: str
     low_confidence: bool
     top3: list
     retrieved_examples: list = []
@@ -81,34 +75,29 @@ class PredictResponse(BaseModel):
     avg_handle_turns: float
 
 
-# ── Core prediction logic ─────────────────────────────────────────────────────
-
 def run_prediction(text: str) -> dict:
-    """
-    Two-stage pipeline:
-      1. BERT classifier — fast, high accuracy
-      2. Hybrid retrieval fallback if confidence < threshold
-    """
     classifier = get_classifier()
     result = classifier.predict(text)
 
     source = "bert"
     retrieved = []
 
-    if result["low_confidence"]:
-        retriever = get_retriever()
-        retrieval_result = retriever.predict_from_retrieval(text)
-        retrieved = retrieval_result["retrieved"]
-
-        if retrieval_result["confidence"] > result["confidence"]:
-            result["intent"] = retrieval_result["intent"]
-            result["confidence"] = retrieval_result["confidence"]
-            source = "retrieval_fallback"
+    # Only attempt retrieval fallback if data/index is available
+    if result["low_confidence"] and _RETRIEVAL_AVAILABLE:
+        try:
+            from retrieval.hybrid_retriever import get_retriever
+            retriever = get_retriever()
+            retrieval_result = retriever.predict_from_retrieval(text)
+            retrieved = retrieval_result["retrieved"]
+            if retrieval_result["confidence"] > result["confidence"]:
+                result["intent"] = retrieval_result["intent"]
+                result["confidence"] = retrieval_result["confidence"]
+                source = "retrieval_fallback"
+        except Exception as e:
+            print(f"Retrieval fallback skipped: {e}")
 
     return {**result, "source": source, "retrieved_examples": retrieved}
 
-
-# ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @app.get("/", include_in_schema=False)
 def serve_frontend():
@@ -117,7 +106,7 @@ def serve_frontend():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "model": "bert-base-uncased-clinc150"}
+    return {"status": "ok", "model": "bert-base-uncased-clinc150", "retrieval": _RETRIEVAL_AVAILABLE}
 
 
 @app.get("/intents")
