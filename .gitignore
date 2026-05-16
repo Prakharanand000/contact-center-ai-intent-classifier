@@ -1,11 +1,17 @@
 models/bert_intent/
+bert_intent.zip
 retrieval/retrieval_index.pkl
 retrieval/retrieval_index_embeddings.npy
 __pycache__/
 **/__pycache__/
 *.pyc
+*.zip
 .env
 notebooks/test_predictions.csv
 data/train.csv
 data/validation.csv
 data/test.csv
+api/_chip_fix_reference.js
+api/_api_fix.js
+fix_api_url.py
+upload_model.py
