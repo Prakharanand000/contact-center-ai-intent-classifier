@@ -1,6 +1,6 @@
 """
 Inference wrapper for the fine-tuned BERT intent classifier.
-Loads model once, exposes predict() for use by the API and retrieval layer.
+Loads from local disk if available, otherwise downloads from HuggingFace Hub (Render deployment).
 """
 
 import os
@@ -9,33 +9,33 @@ import torch
 import numpy as np
 from transformers import BertTokenizerFast, BertForSequenceClassification
 
-MODEL_DIR = os.path.join(os.path.dirname(__file__), "bert_intent")
+LOCAL_MODEL_DIR = os.path.join(os.path.dirname(__file__), "bert_intent")
+HF_MODEL_ID     = "prakharanand85/contact-center-bert-clinc150"
+MODEL_SOURCE    = LOCAL_MODEL_DIR if os.path.isdir(LOCAL_MODEL_DIR) else HF_MODEL_ID
+
 MAX_LEN = 64
-CONFIDENCE_THRESHOLD = 0.60  # below this, hand off to retrieval fallback
+CONFIDENCE_THRESHOLD = 0.60
 
 
 class IntentClassifier:
     def __init__(self):
-        print(f"Loading BERT intent classifier from {MODEL_DIR}...")
-        self.tokenizer = BertTokenizerFast.from_pretrained(MODEL_DIR)
-        self.model = BertForSequenceClassification.from_pretrained(MODEL_DIR)
+        print(f"Loading BERT from: {MODEL_SOURCE}")
+        self.tokenizer = BertTokenizerFast.from_pretrained(MODEL_SOURCE)
+        self.model = BertForSequenceClassification.from_pretrained(MODEL_SOURCE)
         self.model.eval()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
 
         id2label_path = os.path.join(os.path.dirname(__file__), "id2label.json")
-        with open(id2label_path) as f:
-            self.id2label = json.load(f)
+        if os.path.exists(id2label_path):
+            with open(id2label_path) as f:
+                self.id2label = json.load(f)
+        else:
+            self.id2label = {str(k): v for k, v in self.model.config.id2label.items()}
+
         print(f"Classifier ready. Labels: {len(self.id2label)} | Device: {self.device}")
 
     def predict(self, text: str) -> dict:
-        """
-        Returns:
-            intent (str): predicted intent label
-            confidence (float): softmax probability of top prediction
-            low_confidence (bool): True if below CONFIDENCE_THRESHOLD
-            top3 (list): top 3 (intent, score) pairs
-        """
         enc = self.tokenizer(
             text,
             max_length=MAX_LEN,
@@ -60,7 +60,6 @@ class IntentClassifier:
         }
 
 
-# Singleton — load once at import time for API use
 _classifier = None
 
 def get_classifier() -> IntentClassifier:
