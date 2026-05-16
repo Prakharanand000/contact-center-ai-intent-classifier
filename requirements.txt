@@ -10,5 +10,6 @@ pydantic==2.7.4
 scikit-learn==1.5.1
 numpy==1.26.4
 pandas==2.2.2
+datasets==2.19.0
 accelerate==0.33.0
 huggingface_hub==0.24.6
